@@ -15,6 +15,9 @@
 @property (assign, nonatomic) CGPoint lastTouchLocation;
 @property (strong, nonatomic) UIImage *image;
 
+@property (readonly, nonatomic) CGRect currentRect;	// 矩形的位置和大小
+@property (assign, nonatomic) CGRect redrawRect;		// 跟踪需要重新绘制的区域
+
 @end
 
 @implementation QuartzFunView
@@ -39,64 +42,51 @@
     UITouch *touch = [touches anyObject];
     self.firstTouchLocation = [touch locationInView:self];
     self.lastTouchLocation = [touch locationInView:self];
+    
+    self.redrawRect = CGRectZero;	// 初始化绘制区域为无
+    
     [self setNeedsDisplay];	// 将视图标记为需要重新绘制
 }
 
 // 触摸离开屏幕时调用
 - (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
-	UITouch *touch = [touches anyObject];
-    self.lastTouchLocation = [touch locationInView:self];
-    [self setNeedsDisplay];
-}
-
-// 在屏幕上拖动时持续调用
-- (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
-	UITouch *touch = [touches anyObject];
-	self.lastTouchLocation = [touch locationInView:self];
-	[self setNeedsDisplay];
-}
- /*
-- (void)touchesEnded:(NSSet *)touches withEvent:(UIEvent *)event {
     UITouch *touch = [touches anyObject];
     self.lastTouchLocation = [touch locationInView:self];
     
+    // 绘制区域
     if (self.shapeType == kImageShape) {
         CGFloat horizontalOffset = self.image.size.width / 2;
         CGFloat verticalOffset = self.image.size.height / 2;
-        self.redrawRect = CGRectUnion(self.redrawRect,
-                                      CGRectMake(self.lastTouchLocation.x -
-                                                 horizontalOffset,
-                                                 self.lastTouchLocation.y -
-                                                 verticalOffset,
-                                                 self.image.size.width,
-                                                 self.image.size.height));
+        self.redrawRect = CGRectUnion(self.redrawRect, CGRectMake(
+    		self.lastTouchLocation.x - horizontalOffset, 
+            self.lastTouchLocation.y - verticalOffset,
+        	self.image.size.width, self.image.size.height));
     } else {
         self.redrawRect = CGRectUnion(self.redrawRect, self.currentRect);
     }
+    // 标记为需要重新绘制
     self.redrawRect = CGRectInset(self.redrawRect, -2.0, -2.0);
     [self setNeedsDisplayInRect:self.redrawRect];
 }
 
+// 在屏幕上拖动时持续调用
 - (void)touchesMoved:(NSSet *)touches withEvent:(UIEvent *)event {
     UITouch *touch = [touches anyObject];
     self.lastTouchLocation = [touch locationInView:self];
     
+    // 绘制区域
     if (self.shapeType == kImageShape) {
         CGFloat horizontalOffset = self.image.size.width / 2;
         CGFloat verticalOffset = self.image.size.height / 2;
-        self.redrawRect = CGRectUnion(self.redrawRect,
-                                      CGRectMake(self.lastTouchLocation.x -
-                                                 horizontalOffset,
-                                                 self.lastTouchLocation.y -
-                                                 verticalOffset,
-                                                 self.image.size.width,
-                                                 self.image.size.height));
+        self.redrawRect = CGRectUnion(self.redrawRect, CGRectMake(
+        	self.lastTouchLocation.x - horizontalOffset,
+			self.lastTouchLocation.y - verticalOffset,
+			self.image.size.width, self.image.size.height));
     } else {
         self.redrawRect = CGRectUnion(_redrawRect, self.currentRect);
     }
     [self setNeedsDisplayInRect:self.redrawRect];
 }
-*/
 
 #pragma mark - Drawing Code
 
@@ -105,11 +95,6 @@
     CGContextSetLineWidth(context, 2.0);						// 线宽度为2点
     CGContextSetStrokeColorWithColor(context, self.currentColor.CGColor);	// 笔刷颜色
     CGContextSetFillColorWithColor(context, self.currentColor.CGColor);		// 填充颜色
-    // 矩形的位置和大小
-    CGRect currentRect = CGRectMake(self.firstTouchLocation.x, self.firstTouchLocation.y, 
-                    				self.lastTouchLocation.x - self.firstTouchLocation.x, 
-                                    self.lastTouchLocation.y - self.firstTouchLocation.y);
-
 
     switch (self.shapeType) {
         case kLineShape:
@@ -118,11 +103,11 @@
             CGContextStrokePath(context);	// 绘制路径
             break;
         case kRectShape:
-            CGContextAddRect(context, currentRect);
+            CGContextAddRect(context, self.currentRect);
             CGContextDrawPath(context, kCGPathFillStroke);
             break;
         case kEllipseShape:
-            CGContextAddEllipseInRect(context, currentRect);
+            CGContextAddEllipseInRect(context, self.currentRect);
             CGContextDrawPath(context, kCGPathFillStroke);
             break;
         case kImageShape: {
@@ -138,11 +123,9 @@
 }
 
 - (CGRect)currentRect {
-    return CGRectMake (self.firstTouchLocation.x,
-                       self.firstTouchLocation.y,
+    return CGRectMake (self.firstTouchLocation.x, self.firstTouchLocation.y,
                        self.lastTouchLocation.x - self.firstTouchLocation.x,
                        self.lastTouchLocation.y - self.firstTouchLocation.y);
 }
-
 
 @end
